@@ -1,8 +1,8 @@
 # xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Config Script:
 #  step 1 - connect to router and run "show run"
-#  step 2 - (1) open file with added changes or (2) with full config, or (3) changes on screen
-#  step 3 - send (scp) full config to router, or send config from "show run" + added changes
+#  step 2 - (Mode 1) open file with full config; (Mode 2) open file or/and manual input with added changes
+#  step 3 - (Mode 1) send (scp) full config to router; (Mode 2) send config from "show run" + added changes
 #  step 4 - load config that was sent
 #  step 5 - commit replace
 #  step 6 - run "show run" after changes
@@ -218,7 +218,7 @@ def connect_to_device(host, username, password, port=22):
 
 def save_config(rshell_router, location, filename):
     cmd = "copy running-config "+location + filename + "\n\nyes"
-    _print(cmd)
+#    _print(cmd)
     ret = run_cmd(rshell_router, cmd + "\n")
     _print(ret)
     time.sleep(10)
@@ -227,7 +227,7 @@ def save_config(rshell_router, location, filename):
 def diff_config(rshell_router, config1, config2, filename):
 
     cmd = "run\ndiff " + config1 + " " + config2 + "\nexit"
-    _print(cmd)
+#    _print(cmd)
     ret = run_cmd(rshell_router, cmd + "\n")
     _print(ret)
 
@@ -270,7 +270,7 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
         cmds.append("configure terminal")
         cmds.append("load harddisk:/" + filename)
         for cmd in cmds:
-            _print(cmd)
+#            _print(cmd)
             ret = run_cmd(rshell_router, cmd + "\n")
             output += ret
             _print(ret)
@@ -278,7 +278,7 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
         if output.find("Couldn't open file") > 0:
             _print("Fail to load config!")
             cmd = ("abort")
-            _print(cmd)
+#            _print(cmd)
             ret = run_cmd(rshell_router, cmd + "\n")
             _print(ret)
             sys.exit()
@@ -287,7 +287,7 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
         cmds.append("configure terminal")
         cmds.append("load harddisk:/" + original_config)
         for cmd in cmds:
-            _print(cmd)
+#            _print(cmd)
             ret = run_cmd(rshell_router, cmd + "\n")
             output += ret
             _print(ret)
@@ -295,7 +295,7 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
         if output.find("Couldn't open file") > 0:
             _print("Fail to load config!")
             cmd = ("abort")
-            _print(cmd)
+#            _print(cmd)
             ret = run_cmd(rshell_router, cmd + "\n")
             _print(ret)
             sys.exit()
@@ -306,29 +306,29 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
                 additional_configs = f.readlines()
                 cmds.extend(additional_configs)
 
-        cmds.append(config)
+        cmds.extend(config)
 
         for cmd in cmds:
-            _print(cmd)
+#            _print(cmd)
             ret = run_cmd(rshell_router, cmd + "\n")
             output += ret
             _print(ret)
 
     cmd = "commit replace\nyes"
-    _print(cmd)
+#    _print(cmd)
     ret = run_cmd(rshell_router, cmd + "\n")
     _print(ret)
 
     if ret.find("fail") > 0:
         _print("Fail to commit config!")
         cmd = ("abort")
-        _print(cmd)
+#        _print(cmd)
         ret = run_cmd(rshell_router, cmd + "\n")
         _print(ret)
         sys.exit()
 
     cmd = ("end")
-    _print(cmd)
+#    _print(cmd)
     ret = run_cmd(rshell_router, cmd + "\n")
     _print(ret)
 
@@ -343,16 +343,32 @@ def _print(output):
 
 if __name__ == "__main__":
 
+
     parser = argparse.ArgumentParser(description='Config script')
     parser.add_argument("-u", "--user", dest="username", default="root")
     parser.add_argument("-p", "--password", dest="password", default="lablab", help="password")
     parser.add_argument("-a", "--host", dest="host", help="Host IP address", required=True)
-    parser.add_argument("-m", "--mode", dest="mode", help="1: Replace config; 2: Add config", default=1)
+    parser.add_argument("-m", "--mode", dest="mode", help="1: Replace config; 2: Add config", default="1")
     parser.add_argument("-f", "--filename", dest="filename",
                         help="Path and name of the file which contains the configs.", default="")
-    parser.add_argument("-c", "--config", dest="config", help="Additional config", default="")
+    parser.add_argument("-i", "--input", dest="input", help="Input additional config", default="no")
 
     args = parser.parse_args()
+
+    if args.mode == "1" and args.filename == "":
+        _print("Error: Must specify a config file when using mode 1")
+        sys.exit()
+
+    # Manual input config
+    additional_configs = []
+    if args.input=="yes":
+        _print("Please enter the additional configs. End the input with \"end\":")
+        while True:
+            line = input()
+            if line == "end":
+                _print("Config input finished")
+                break
+            additional_configs.append(line)
 
     # Create connection
     rshell_router = connect_to_device(args.host, args.username, args.password)
@@ -362,7 +378,7 @@ if __name__ == "__main__":
     save_config(rshell_router, "harddisk:/", config1)
 
     # Load config based on the specified mode
-    load_config(rshell_router, args.host, args.username, args.password, args.mode, args.filename, args.config, config1)
+    load_config(rshell_router, args.host, args.username, args.password, args.mode, args.filename, additional_configs, config1)
 
     # Save config_2
     config2 = args.host + "-after.config"
@@ -372,6 +388,5 @@ if __name__ == "__main__":
     diff_config(rshell_router, "/harddisk:/"+config1, "/harddisk:/"+config2, args.host+"-diff.txt")
 
     rshell_router.close()
-
 
 
