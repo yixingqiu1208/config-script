@@ -236,32 +236,12 @@ def diff_config(rshell_router, config1, config2, filename):
     _print(filename +" saved!")
 
 
-def scp_file(host, port, username, password, filename, destination):
-
-    ssh = SSHClient()
-    ssh.load_system_host_keys()
-    ssh.connect(hostname=host,
-                port=port,
-                username=username,
-                password=password,
-                allow_agent=False,
-                look_for_keys=False,
-                timeout=20)
-
-    # SCPCLient takes a paramiko transport as its only argument
-    scp = SCPClient(ssh.get_transport())
-    scp.put(filename, destination)
-    scp.close()
-
-
 def load_config(rshell_router, host, username, password, mode, filename, config, original_config):
 
     output = ""
     cmds = []
 
     if mode == "1":
-
-#        scp_file(host, 22, username, password, filename, "/harddisk:/")
 
         scp = SCPClient(rshell_router.session.get_transport())
         scp.put(filename, "/harddisk:/")
