@@ -351,7 +351,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--mode", dest="mode", help="1: Replace config; 2: Add config", default="1")
     parser.add_argument("-f", "--filename", dest="filename",
                         help="Path and name of the file which contains the configs.", default="")
-    parser.add_argument("-i", "--input", dest="input", help="Input additional config", default="no")
+    parser.add_argument("-i", "--input", dest="input", help="Enable manual additional config input. (Only for mode 2)", default="no")
 
     args = parser.parse_args()
 
