@@ -263,7 +263,7 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
             _print(ret)
             sys.exit()
 
-    else:
+    elif mode == "2":
         cmds.append("configure terminal")
         cmds.append("load harddisk:/" + original_config)
         for cmd in cmds:
@@ -293,6 +293,10 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
             ret = run_cmd(rshell_router, cmd + "\n")
             output += ret
             _print(ret)
+
+    else:
+        _print("Unknown mode: " + mode)
+        sys.exit()
 
     cmd = "commit replace\nyes"
 #    _print(cmd)
