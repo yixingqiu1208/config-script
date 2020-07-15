@@ -221,7 +221,7 @@ def save_config(rshell_router, location, filename):
 #    _print(cmd)
     ret = run_cmd(rshell_router, cmd + "\n")
     _print(ret)
-    time.sleep(10)
+    time.sleep(3)
 
 
 def diff_config(rshell_router, config1, config2, filename):
@@ -236,7 +236,7 @@ def diff_config(rshell_router, config1, config2, filename):
     _print(filename +" saved!")
 
 
-def load_config(rshell_router, host, username, password, mode, filename, config, original_config):
+def load_config(rshell_router, host, username, password, mode, filename, config, original_config, sleep):
 
     output = ""
     cmds = []
@@ -316,8 +316,8 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
     ret = run_cmd(rshell_router, cmd + "\n")
     _print(ret)
 
-    _print("Sleep for 15 seconds!")
-    time.sleep(15)
+    _print("Sleep for " + sleep + " seconds!")
+    time.sleep(int(sleep))
 
 
 def _print(output):
@@ -336,6 +336,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--filename", dest="filename",
                         help="Path and name of the file which contains the configs.", default="")
     parser.add_argument("-i", "--input", dest="input", help="Enable manual additional config input. (Only for mode 2)", default="no")
+    parser.add_argument("-s", "--sleep", dest="sleep", help="Sleep for the input number of seconds after commit/commit replce", default=15)
 
     args = parser.parse_args()
 
@@ -362,7 +363,7 @@ if __name__ == "__main__":
     save_config(rshell_router, "harddisk:/", config1)
 
     # Load config based on the specified mode
-    load_config(rshell_router, args.host, args.username, args.password, args.mode, args.filename, additional_configs, config1)
+    load_config(rshell_router, args.host, args.username, args.password, args.mode, args.filename, additional_configs, config1, args.sleep)
 
     # Save config_2
     config2 = args.host + "-after.config"
