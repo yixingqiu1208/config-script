@@ -217,27 +217,71 @@ def connect_to_device(host, username, password, port=22):
 
 
 def save_config(rshell_router, location, filename):
-    cmd = "copy running-config "+location + filename + "\n\nyes"
-#    _print(cmd)
+    cmd = "copy running-config " + location + filename + "\n\nyes"
+    #    _print(cmd)
     ret = run_cmd(rshell_router, cmd + "\n")
     _print(ret)
     time.sleep(3)
 
 
 def diff_config(rshell_router, config1, config2, filename):
-
     cmd = "run\ndiff " + config1 + " " + config2 + "\nexit"
-#    _print(cmd)
+    #    _print(cmd)
     ret = run_cmd(rshell_router, cmd + "\n")
-    _print(ret)
+    #    _print(ret)
 
-    with open( filename, 'w') as f:
+    with open(filename, 'w') as f:
         f.write(ret)
-    _print(filename +" saved!")
+    _print(filename + " saved!")
+
+    return ret
+
+
+def verify_config_change(expected_config_change, actual_config_change):
+    _print("Verifying commit replace result ...")
+    expected_config_change_list = expected_config_change.split('\n')
+    actual_config_change_list = actual_config_change.split('\n')
+#    for config in actual_config_change_list:
+#        if not (config.startswith('<') or config.startswith('>')):
+#            expected_config_change_list.remove(config)
+    result = True
+    i = 0
+    while i < len(expected_config_change_list):
+        if "!" in expected_config_change_list[i]:
+            i = i + 1
+            continue
+        if expected_config_change_list[i].startswith('-'):
+            if not ("<" + expected_config_change_list[i][2:]) in actual_config_change_list:
+                _print("Error in removing config: \"" + expected_config_change_list[i] + "\"")
+                result = False
+            i = i + 1
+        elif expected_config_change_list[i].startswith('+'):
+            if not (">" + expected_config_change_list[i][2:]) in actual_config_change_list:
+                _print("Error in adding config: \"" + expected_config_change_list[i] + "\"")
+                result = False
+            i = i + 1
+        elif expected_config_change_list[i].startswith('#'):
+            if i >= len(expected_config_change_list) - 1:
+                i = i + 1
+                continue
+            config_remove = expected_config_change_list[i].split()
+            config_add = expected_config_change_list[i+1].split()
+            if not (config_remove[0] == config_add[0] and config_remove[1] == config_add[1]):
+                i = i + 1
+                continue
+            if not (("<" + expected_config_change_list[i][2:]) in actual_config_change_list
+                    and (">" + expected_config_change_list[i+1][2:]) in actual_config_change_list):
+                _print("Error in replacing config: \"" + expected_config_change_list[i]
+                       + "\" with: \"" + expected_config_change_list[i+1] + "\"")
+                result = False
+            i = i + 2
+        else:
+            i = i + 1
+
+    return result
 
 
 def load_config(rshell_router, host, username, password, mode, filename, config, original_config, sleep):
-
     output = ""
     cmds = []
 
@@ -250,7 +294,7 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
         cmds.append("configure terminal")
         cmds.append("load harddisk:/" + filename)
         for cmd in cmds:
-#            _print(cmd)
+            #            _print(cmd)
             ret = run_cmd(rshell_router, cmd + "\n")
             output += ret
             _print(ret)
@@ -258,7 +302,7 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
         if output.find("Couldn't open file") > 0:
             _print("Fail to load config!")
             cmd = ("abort")
-#            _print(cmd)
+            #            _print(cmd)
             ret = run_cmd(rshell_router, cmd + "\n")
             _print(ret)
             sys.exit()
@@ -267,7 +311,7 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
         cmds.append("configure terminal")
         cmds.append("load harddisk:/" + original_config)
         for cmd in cmds:
-#            _print(cmd)
+            #            _print(cmd)
             ret = run_cmd(rshell_router, cmd + "\n")
             output += ret
             _print(ret)
@@ -275,7 +319,7 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
         if output.find("Couldn't open file") > 0:
             _print("Fail to load config!")
             cmd = ("abort")
-#            _print(cmd)
+            #            _print(cmd)
             ret = run_cmd(rshell_router, cmd + "\n")
             _print(ret)
             sys.exit()
@@ -289,7 +333,7 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
         cmds.extend(config)
 
         for cmd in cmds:
-#            _print(cmd)
+            #            _print(cmd)
             ret = run_cmd(rshell_router, cmd + "\n")
             output += ret
             _print(ret)
@@ -298,26 +342,31 @@ def load_config(rshell_router, host, username, password, mode, filename, config,
         _print("Unknown mode: " + mode)
         sys.exit()
 
+    run_cmd(rshell_router, "root\n")
+    expected_config_change = run_cmd(rshell_router, "show configuration changes diff\n")
+
     cmd = "commit replace\nyes"
-#    _print(cmd)
+    #    _print(cmd)
     ret = run_cmd(rshell_router, cmd + "\n")
     _print(ret)
 
     if ret.find("fail") > 0:
         _print("Fail to commit config!")
         cmd = ("abort")
-#        _print(cmd)
+        #        _print(cmd)
         ret = run_cmd(rshell_router, cmd + "\n")
         _print(ret)
         sys.exit()
 
     cmd = ("end")
-#    _print(cmd)
+    #    _print(cmd)
     ret = run_cmd(rshell_router, cmd + "\n")
     _print(ret)
 
     _print("Sleep for " + sleep + " seconds!")
     time.sleep(int(sleep))
+
+    return expected_config_change
 
 
 def _print(output):
@@ -327,7 +376,6 @@ def _print(output):
 
 if __name__ == "__main__":
 
-
     parser = argparse.ArgumentParser(description='Config script')
     parser.add_argument("-u", "--user", dest="username", default="root")
     parser.add_argument("-p", "--password", dest="password", default="lablab", help="password")
@@ -335,8 +383,10 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--mode", dest="mode", help="1: Replace config; 2: Add config", default="1")
     parser.add_argument("-f", "--filename", dest="filename",
                         help="Path and name of the file which contains the configs.", default="")
-    parser.add_argument("-i", "--input", dest="input", help="Enable manual additional config input. (Only for mode 2)", default="no")
-    parser.add_argument("-s", "--sleep", dest="sleep", help="Sleep for the input number of seconds after commit/commit replce", default=15)
+    parser.add_argument("-i", "--input", dest="input", help="Enable manual additional config input. (Only for mode 2)",
+                        default="no")
+    parser.add_argument("-s", "--sleep", dest="sleep",
+                        help="Sleep for the input number of seconds after commit/commit replce", default=15)
 
     args = parser.parse_args()
 
@@ -346,7 +396,7 @@ if __name__ == "__main__":
 
     # Manual input config
     additional_configs = []
-    if args.input=="yes":
+    if args.input == "yes":
         _print("Please enter the additional configs. End the input with \"end\":")
         while True:
             line = input()
@@ -359,18 +409,26 @@ if __name__ == "__main__":
     rshell_router = connect_to_device(args.host, args.username, args.password)
 
     # Save config_1
-    config1 = args.host+"-before.config"
+    config1 = args.host + "-before.config"
     save_config(rshell_router, "harddisk:/", config1)
 
     # Load config based on the specified mode
-    load_config(rshell_router, args.host, args.username, args.password, args.mode, args.filename, additional_configs, config1, args.sleep)
+    expected_config_change = load_config(rshell_router, args.host, args.username, args.password, args.mode,
+                                         args.filename, additional_configs, config1, args.sleep)
 
     # Save config_2
     config2 = args.host + "-after.config"
     save_config(rshell_router, "harddisk:/", config2)
 
-    # Diff config
-    diff_config(rshell_router, "/harddisk:/"+config1, "/harddisk:/"+config2, args.host+"-diff.txt")
+    # diff_config
+    actual_config_change = diff_config(rshell_router, "/harddisk:/" + config1, "/harddisk:/" + config2,
+                                       args.host + "-diff.txt")
+
+    # verify commit replace
+    if verify_config_change(expected_config_change, actual_config_change):
+        _print("**************** commit replace was successful! ******************")
+    else:
+        _print("**************** commit replace failed! Check diff for details ******************")
 
     rshell_router.close()
 
